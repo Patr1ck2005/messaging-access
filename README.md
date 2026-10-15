@@ -1,5 +1,7 @@
 # messaging-access
 
+[![Validate public source](https://github.com/Patr1ck2005/messaging-access/actions/workflows/validate.yml/badge.svg)](https://github.com/Patr1ck2005/messaging-access/actions/workflows/validate.yml)
+
 让支持本地工具的 AI 客户端，按需读取你自己的微信与 QQ 消息。
 
 Windows 部署工具与共享 skill，复用 **wechatauto-replica / QCE Framework / NapCat**。支持最新消息读取、可取得历史的分页、消息分析和按需媒体读取。分析模型由你的客户端选择，可搭配 Codex、DeepSeek Harness 等具备文件和命令工具的客户端。
@@ -15,6 +17,11 @@ flowchart LR
 ## 快速开始
 
 准备 Windows 10/11 x64、PowerShell 7、Python 3.11 x64，以及你已安装的微信／QQ。已实测组合为微信 4.1.15.13、QQ 9.9.33.52230；客户端更新可能改变兼容性。
+
+```powershell
+git clone https://github.com/Patr1ck2005/messaging-access.git
+Set-Location messaging-access
+```
 
 从项目目录运行。安装脚本创建隔离 Python 环境、按固定版本下载上游、校验主发布包摘要，并登记同源 skill。登录仍由你手动完成。
 
@@ -35,6 +42,8 @@ flowchart LR
 QQ 的 `-AcceptLanMetadataExposure` 有实际含义：固定上游版本的 HTTP 服务监听所有网卡。消息等私有 API 使用随机 token 和本机来源 IP 白名单，但局域网可能访问静态页面与有限在线状态。详情见 [QQ 部署](docs/qq.md)。此接入的只读范围由调用流程限定，底层 token 没有细分的只读权限。
 
 已有部署的程序、下载包和 token 会复用；安装脚本不启动或强行关闭 QQ，不改模型或 provider 配置。使用自定义 Python 路径时加 `-PythonExe <python.exe路径>`。更多参数以 `Get-Help .\scripts\install.ps1 -Detailed` 为准。
+
+若 Windows 执行策略阻止本地脚本，审阅代码后可用 `pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1`（其他脚本同理）；该选项只作用于该进程，不修改系统执行策略。网络较慢时可显式传 `-PackageIndexUrl <HTTPS镜像地址>`，仅影响本次 pip 请求。
 
 ## 开始使用
 
