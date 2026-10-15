@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "wechat": {
+    "name": "wechatauto-replica",
+    "version": "1.2.6.1",
+    "filename": "wechatauto_replica-1.2.6.1-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/46/45/735ca97e28fcf5dd336c8ca6acfa2b22c0839ba0b14dcfe2a06318250c2a/wechatauto_replica-1.2.6.1-py3-none-any.whl",
+    "sha256": "5400c6e2155f157fac2caa3c0786f1035a81d3e1246427ab52771a3c992a81fc",
+    "bytes": 484920,
+    "source": "https://pypi.org/project/wechatauto-replica/1.2.6.1/"
+  },
+  "qq": {
+    "name": "QQ Chat Exporter Framework",
+    "version": "6.3.2",
+    "napcatVersion": "4.18.28",
+    "filename": "NapCat-Framework-QCE-v6.3.2.zip",
+    "url": "https://github.com/shuakami/qq-chat-exporter/releases/download/v6.3.2/NapCat-Framework-QCE-v6.3.2.zip",
+    "sha256": "eb0c2af40fc5a4a063ec2df7f8fa343d325894582d0aaa3c98ca7361418810ae",
+    "bytes": 43138713,
+    "source": "https://github.com/shuakami/qq-chat-exporter/releases/tag/v6.3.2"
+  }
+}

@@ -1,0 +1,28 @@
+name: Validate public source
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  offline-checks:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse PowerShell files
+        shell: pwsh
+        run: |
+          $failures = @()
+          Get-ChildItem scripts,tests -Filter *.ps1 -Recurse | ForEach-Object {
+            $tokens = $null
+            $parseIssues = $null
+            [void][Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$parseIssues)
+            if ($parseIssues.Count) { $failures += $_.Name }
+          }
+          if ($failures.Count) { throw ('Invalid scripts: ' + ($failures -join ', ')) }
+      - name: Test cache deletion boundaries with synthetic files
+        shell: pwsh
+        run: ./tests/cache.Tests.ps1
+      - name: Check public release selection
+        shell: pwsh
+        run: ./scripts/prepare-release.ps1 -CheckOnly

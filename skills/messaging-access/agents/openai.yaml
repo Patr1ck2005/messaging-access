@@ -1,0 +1,4 @@
+interface:
+  display_name: "微信与 QQ 消息读取"
+  short_description: "在 Codex 或 DSH 中读取微信和 QQ 最新消息及本机历史"
+  default_prompt: "使用 $messaging-access 读取我最新的微信和 QQ 消息。"
