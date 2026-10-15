@@ -2,6 +2,8 @@
 
 `scripts/access.py` is a local JSON command interface, not a network service. Invoke it with the Python executable in the deployment configuration. Write exactly one UTF-8 JSON request to stdin; stdout contains one `{ok,data}` or `{ok:false,error:{code,message}}` object. Internal upstream output is captured, never echoed.
 
+Configuration follows [deployment discovery](deployment.md). An optional command-line `--config <file>` precedes the environment and new/legacy default locations. Request JSON cannot override deployment or policy paths; an invalid selected config never falls back to another installation.
+
 | Action | Input | Purpose |
 |---|---|---|
 | `catalog` | none | Trusted local setup metadata: available accounts and conversations; never send this unrestricted catalog to a model |

@@ -9,19 +9,22 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from wechat_qq_access.backends import LocalBackend
+from wechat_qq_access.deployment import resolve_config_path
 from wechat_qq_access.service import AccessError, AccessService, PolicyStore, safe_response
 
 
 def main():
     try:
-        if len(sys.argv) != 1:
+        explicit_config = None
+        if len(sys.argv) == 3 and sys.argv[1] == "--config":
+            explicit_config = sys.argv[2]
+        elif len(sys.argv) != 1:
             raise AccessError("INVALID_REQUEST", "Provide one JSON request on standard input.")
         raw_request = sys.stdin.read(4 * 1024 * 1024 + 1)
         if len(raw_request) > 4 * 1024 * 1024:
             raise AccessError("INVALID_REQUEST", "The JSON request exceeds the size limit.")
         request = json.loads(raw_request)
-        config_path = Path(os.environ.get("MESSAGING_ACCESS_CONFIG") or
-                           str(Path(os.environ["LOCALAPPDATA"]) / "MessagingAccess" / "deployment.json"))
+        config_path = resolve_config_path(explicit_config)
         config = json.loads(config_path.read_text(encoding="utf-8-sig"))
         if config.get("schemaVersion") != 1 or not isinstance(config.get("privateRoot"), str):
             raise AccessError("CONFIG_INVALID", "The private deployment configuration is invalid.")

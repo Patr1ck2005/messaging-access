@@ -1,7 +1,10 @@
 #Requires -Version 7.0
 [CmdletBinding()]
-param([string]$ConfigPath = (Join-Path $env:LOCALAPPDATA 'MessagingAccess/deployment.json'))
+param([string]$ConfigPath)
 $ErrorActionPreference = 'Stop'
+$pathParameters = @{} + $PSBoundParameters
+. (Join-Path $PSScriptRoot 'deployment-path.ps1')
+$ConfigPath = Resolve-AccessConfigPath -ConfigPath $ConfigPath -Explicit:$($pathParameters.ContainsKey('ConfigPath'))
 if (-not $IsWindows) { throw 'This deployment requires Windows and PowerShell 7.' }
 try { $config = Get-Content -LiteralPath ([Environment]::ExpandEnvironmentVariables($ConfigPath)) -Raw | ConvertFrom-Json }
 catch { throw 'Private deployment config is unavailable or invalid. No credential values are displayed.' }

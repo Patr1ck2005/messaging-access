@@ -1,10 +1,10 @@
 #Requires -Version 7.0
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [string]$ConfigPath = (Join-Path $env:LOCALAPPDATA 'MessagingAccess/deployment.json'),
+    [string]$ConfigPath,
     [string]$PythonExe,
     [uri]$PackageIndexUrl = 'https://pypi.org/simple',
-    [string]$PrivateRoot = (Join-Path $env:LOCALAPPDATA 'MessagingAccess'),
+    [string]$PrivateRoot,
     [string]$QQRoot,
     [string]$QQExe,
     [switch]$EnableQQ,
@@ -13,6 +13,10 @@ param(
     [switch]$PrepareOnly
 )
 $ErrorActionPreference = 'Stop'
+$pathParameters = @{} + $PSBoundParameters
+. (Join-Path $PSScriptRoot 'deployment-path.ps1')
+$ConfigPath = Resolve-AccessConfigPath -ConfigPath $ConfigPath -Explicit:$($pathParameters.ContainsKey('ConfigPath'))
+if (-not $pathParameters.ContainsKey('PrivateRoot')) { $PrivateRoot = Get-AccessPrivateRoot }
 if (-not $IsWindows) { throw 'This deployment requires Windows and PowerShell 7.' }
 if (-not $PackageIndexUrl.IsAbsoluteUri -or $PackageIndexUrl.Scheme -ne 'https' -or $PackageIndexUrl.UserInfo) {
     throw '-PackageIndexUrl must be an absolute HTTPS package-index URL without embedded credentials.'
@@ -108,7 +112,10 @@ if ($EnableQQ -and -not $AcceptLanMetadataExposure) {
 }
 $ConfigPath = FullPath $ConfigPath
 $lock = ReadJson (Join-Path $repoRoot 'upstream-lock.json')
-$configExists = Test-Path -LiteralPath $ConfigPath -PathType Leaf
+$configExists = Test-Path -LiteralPath $ConfigPath
+if ($configExists -and -not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
+    throw 'The selected deployment configuration is not a file; no other installation was selected.'
+}
 $fillQQExe = $false
 if ($configExists) {
     $deployment = ReadJson $ConfigPath

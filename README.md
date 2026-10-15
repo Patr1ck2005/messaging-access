@@ -10,8 +10,9 @@ Windows 部署工具、会话权限与共享 skill，复用 **wechatauto-replica
 flowchart LR
     U[用户提问] --> A[AI 客户端与所选模型]
     S[messaging-access skill] -.调用说明.-> A
-    A --> W[WeChatDB] --> WD[微信本机数据库]
-    A --> Q[QCE HTTP API / NapCat] --> QQ[已登录 QQ]
+    A --> P[权限检查 / Access JSON CLI]
+    P --> W[WeChatDB] --> WD[微信本机数据库]
+    P --> Q[QCE HTTP API / NapCat] --> QQ[已登录 QQ]
 ```
 
 ## 快速开始
@@ -49,7 +50,7 @@ QQ 的 `-AcceptLanMetadataExposure` 有实际含义：固定上游版本的 HTTP
 
 本版本通过统一 JSON 读取入口强制检查会话权限。首次使用先在 [桌面面板](https://github.com/Patr1ck2005/wechat-qq-ai-panel) 或本地权限 CLI 中为每个账号配置白名单或排除名单；缺失、损坏或新账号未配置时，消息读取拒绝执行。关注列表不授予权限。白名单只允许选中会话，排除名单允许未被排除的会话（包括新会话）。详情见 [权限接口](docs/access-api.md)。
 
-既有 `messaging-access` skill 名称、`MESSAGING_ACCESS_CONFIG` 和私有配置位置保持兼容。所有公开调用流程改用 `scripts/access.py`；上游库和 QQ token 本身没有会话级权限，本产品保护其自己的读取与模型外发流程，不构成同一 Windows 用户下的系统沙箱。
+既有 `messaging-access` skill 名称、`MESSAGING_ACCESS_CONFIG` 和旧配置位置保持兼容。新安装采用普通用户目录，现有自定义路径保留，定位顺序见 [部署配置](docs/deployment.md)。所有公开调用流程改用 `scripts/access.py`；上游库和 QQ token 本身没有会话级权限，本产品保护其自己的读取与模型外发流程，不构成同一 Windows 用户下的系统沙箱。
 
 ## 开始使用
 
@@ -80,7 +81,7 @@ QQ 的 `-AcceptLanMetadataExposure` 有实际含义：固定上游版本的 HTTP
 
 ## 配置与隐私
 
-机器配置默认在 `%LOCALAPPDATA%/MessagingAccess/deployment.json`，路径结构见 [配置示例](config.example.json)。实际 token、密钥和解密数据库留在本机私有目录；不要将它们粘贴给模型。模型通过工具在请求进程内部使用凭据。
+新安装的配置与私有缓存默认放在 `%USERPROFILE%/.local/share/wechat-qq-access`，配置文件为其中的 `deployment.json`，避免 MSIX 客户端将 AppData 文件虚拟化而使普通桌面进程看不到同一部署。旧 AppData 配置仍可识别，明确指定的配置优先；选中文件损坏时停止，不转用另一个安装。完整规则见 [部署配置](docs/deployment.md)，字段见 [配置示例](config.example.json)。实际 token、密钥和解密数据库留在本机私有目录；不要将它们粘贴给模型。模型通过工具在请求进程内部使用凭据。
 
 你要求分析的消息片段会进入当前 AI 客户端和所选模型的上下文；客户端自己的会话记录也可能保存工具输出。建议按时间、会话和任务取需要的内容。项目没有新增云端消息服务。详见 [隐私说明](docs/privacy.md)。
 

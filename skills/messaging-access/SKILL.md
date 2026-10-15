@@ -9,10 +9,23 @@ description: Read and summarize authorized WeChat and QQ conversations through t
 
 ## 定位与调用
 
-配置来自 `MESSAGING_ACCESS_CONFIG`，未指定时为 `%LOCALAPPDATA%/MessagingAccess/deployment.json`。在调用进程内解析配置，不打印完整配置；使用其中 `pythonExe` 和 `projectRoot/scripts/access.py`，不得从 skill 位置或其他部署猜路径。
+依次选择：用户明确提供的配置路径、`MESSAGING_ACCESS_CONFIG`、已存在的 `%USERPROFILE%/.local/share/wechat-qq-access/deployment.json`、已存在的旧 `%LOCALAPPDATA%/MessagingAccess/deployment.json`。新安装默认在普通用户根，避免 MSIX 的 AppData 虚拟化。选定路径不存在、文件损坏或字段不兼容时停止，不尝试另一安装。完整规则唯一维护于选中项目的 `docs/deployment.md`。
+
+在调用进程内解析配置，不打印完整配置；使用其中 `pythonExe` 和 `projectRoot/scripts/access.py`，不得从 skill 位置、当前目录或其他部署猜路径。
 
 ```powershell
-$configPath = if ($env:MESSAGING_ACCESS_CONFIG) { $env:MESSAGING_ACCESS_CONFIG } else { Join-Path $env:LOCALAPPDATA 'MessagingAccess/deployment.json' }
+$explicitConfigPath = $null # 用户明确指定时使用其路径，不自行改选。
+$configPath = if ($null -ne $explicitConfigPath) {
+    $explicitConfigPath
+} elseif ($null -ne $env:MESSAGING_ACCESS_CONFIG) {
+    $env:MESSAGING_ACCESS_CONFIG
+} else {
+    $fresh = Join-Path $env:USERPROFILE '.local/share/wechat-qq-access/deployment.json'
+    $legacy = Join-Path $env:LOCALAPPDATA 'MessagingAccess/deployment.json'
+    if (Test-Path -LiteralPath $fresh) { $fresh }
+    elseif (Test-Path -LiteralPath $legacy) { $legacy }
+    else { throw '请先安装 wechat-qq-access 或明确指定已有部署配置。' }
+}
 $deployment = Get-Content -LiteralPath $configPath -Raw -Encoding utf8 | ConvertFrom-Json
 $env:MESSAGING_ACCESS_CONFIG = $configPath
 @{ action = 'conversations' } | ConvertTo-Json -Compress | & $deployment.pythonExe (Join-Path $deployment.projectRoot 'scripts/access.py')

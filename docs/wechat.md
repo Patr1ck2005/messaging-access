@@ -4,7 +4,7 @@
 
 当前已实测 Windows x64 / Python 3.11 / 微信 4.1.15.13 的数据库读取、历史分页、本人消息、跨分片定位、本地图片和用户新发消息。具体账号、计数和私人验收记录不随公开仓库分发。
 
-安装后，AI 从 `%LOCALAPPDATA%/MessagingAccess/deployment.json` 解析 Python 和私有目录。直接 API 的可复制示例见 [skill 微信引用](../skills/messaging-access/references/wechat.md)。微信由操作者正常登录；多个账号时，自动选择的可读账号必须与任务目标对应。
+安装后，AI 按 [部署配置定位](deployment.md) 选择唯一配置并解析 Python 与私有目录；新安装默认使用普通用户根，旧 AppData 配置兼容。权限读取流程见 [skill 微信引用](../skills/messaging-access/references/wechat.md)。微信由操作者正常登录；多个账号时，读取的稳定账号必须与已配置权限对应。
 
 普通消息清单使用 `list_message_chats()`，CLI sessions 只含可见会话。最新查询重新实例化数据库视图以检查 WAL；历史按任务分页，完整导出另核对源清单及行数。定位消息保留 `username + shard + local_id`；不能跨分片只按 local_id 找媒体或发送者。
 

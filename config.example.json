@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "projectRoot": "C:/Projects/messaging-access",
-  "pythonExe": "C:/Projects/messaging-access/.venv/Scripts/python.exe",
-  "privateRoot": "%LOCALAPPDATA%/MessagingAccess",
-  "qqRoot": "C:/Projects/messaging-access/vendor/qq/v6.3.2",
-  "qqSecurityFile": "C:/Projects/messaging-access/vendor/qq/runtime/config/security.json",
+  "projectRoot": "C:/Projects/wechat-qq-access",
+  "pythonExe": "C:/Projects/wechat-qq-access/.venv/Scripts/python.exe",
+  "privateRoot": "%USERPROFILE%/.local/share/wechat-qq-access",
+  "qqRoot": "C:/Projects/wechat-qq-access/vendor/qq/v6.3.2",
+  "qqSecurityFile": "C:/Projects/wechat-qq-access/vendor/qq/runtime/config/security.json",
   "qqExe": "C:/Program Files/Tencent/QQNT/QQ.exe",
   "qqPort": 40653
 }

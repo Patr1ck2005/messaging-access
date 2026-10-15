@@ -18,12 +18,15 @@ param(
     [ValidateSet('WeChatCache', 'WeChatMedia', 'Snapshots', 'Logs', 'All')]
     [string[]]$Category = @('All'),
     [ValidateRange(0, 36500)][double]$OlderThanDays = 7,
-    [string]$ConfigPath = (Join-Path $env:LOCALAPPDATA 'MessagingAccess/deployment.json'),
+    [string]$ConfigPath,
     [switch]$Json
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$pathParameters = @{} + $PSBoundParameters
+. (Join-Path $PSScriptRoot 'deployment-path.ps1')
+$ConfigPath = Resolve-AccessConfigPath -ConfigPath $ConfigPath -Explicit:$($pathParameters.ContainsKey('ConfigPath'))
 $comparison = [StringComparison]::OrdinalIgnoreCase
 $reparse = [IO.FileAttributes]::ReparsePoint
 
@@ -62,11 +65,11 @@ if (-not $project.Equals($expectedProject, $comparison)) { throw 'projectRoot mu
 $private = Get-AbsolutePath $config.privateRoot
 $qq = Get-AbsolutePath $config.qqRoot
 $python = Get-AbsolutePath $config.pythonExe
-if (-not ([IO.Path]::GetFileName($private)).Equals('MessagingAccess', $comparison) -or
+if ([IO.Path]::GetFileName($private) -notin @('MessagingAccess', 'wechat-qq-access') -or
     $private.Equals($project, $comparison) -or (Test-InDirectory $project $private) -or
     $private.Equals((Get-AbsolutePath $HOME), $comparison) -or
     $private.Equals((Get-AbsolutePath $env:LOCALAPPDATA), $comparison)) {
-    throw 'privateRoot must be a dedicated MessagingAccess directory.'
+    throw 'privateRoot must be a dedicated MessagingAccess or wechat-qq-access directory.'
 }
 if ($private -match '(?i)[\\/](xwechat_files|WeChat Files|Tencent|QQChatExporter|\.qq-chat-exporter|\.codex|\.dsh|Windows|Program Files(?: \(x86\))?|vendor|\.venv|node_modules)(?:[\\/]|$)') {
     throw 'privateRoot cannot be inside original chat, credential, system or program directories.'
