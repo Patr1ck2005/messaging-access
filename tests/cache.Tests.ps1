@@ -1,5 +1,5 @@
 #Requires -Version 7.0
-# Dependency-free integration checks. Only the freshly created .local fixture
+# Windows recycle integration checks. Only the freshly created .local fixture
 # is modified; live deployment is never cleaned by this test.
 [CmdletBinding()]
 param()
@@ -17,6 +17,10 @@ $outside = Join-Path $fixture 'original-client-data'
 $configPath = Join-Path $fixture 'deployment.json'
 $passed = 0
 $linkMade = $false
+$previousRecyclePython = $env:WQ_ACCESS_RECYCLE_PYTHON
+$env:WQ_ACCESS_RECYCLE_PYTHON = if (Test-Path -LiteralPath (Join-Path $project '.venv/Scripts/python.exe')) {
+    Join-Path $project '.venv/Scripts/python.exe'
+} else { (Get-Command python -ErrorAction Stop).Source }
 
 function Assert([bool]$Condition, [string]$Message) {
     if (-not $Condition) { throw $Message }
@@ -127,6 +131,8 @@ try {
     Assert ($journal.Count -eq 1) 'Successful cleanup must create a private journal.'
     $records = @(Get-Content -LiteralPath $journal[0].FullName | ForEach-Object { $_ | ConvertFrom-Json })
     Assert ([long](($records | Measure-Object removedBytes -Sum).Sum) -eq 120) 'Journal disagrees with actual removed bytes.'
+    Assert (@($records | Where-Object operation -ne 'recycle').Count -eq 0) 'Cleanup did not use the recycle operation.'
+    Assert ([long](($records | Measure-Object reclaimedBytes -Sum).Sum) -eq 0) 'Recycle must not claim physically reclaimed bytes.'
 
     # All includes deployment logs; preview it only so this test cannot touch
     # any live QQ file, even when that server is stopped.
@@ -153,8 +159,16 @@ try {
         Assert $rejected 'An unsafe privateRoot was accepted.'
     }
     Write-Config $private
+    $hashedAttachment = Join-Path $private ('wechat/media/' + ('a' * 64) + '.pdf')
+    $unknownAttachment = Join-Path $private 'wechat/media/keep-my-document.pdf'
+    New-OldFile $hashedAttachment 3
+    New-OldFile $unknownAttachment 5
+    $null = & $script -ConfigPath $configPath -Action Clean -Category WeChatMedia
+    Assert (-not (Test-Path -LiteralPath $hashedAttachment)) 'Recognized hashed attachment was not recycled.'
+    Assert (Test-Path -LiteralPath $unknownAttachment) 'Unknown attachment was removed.'
     [pscustomobject]@{ Passed = $passed; LiveCleanup = $false; FixtureOnly = $true }
 } finally {
+    $env:WQ_ACCESS_RECYCLE_PYTHON = $previousRecyclePython
     # Remove the junction itself first. Never recurse through its target.
     if ($linkMade -and (Test-Path -LiteralPath $link)) { [IO.Directory]::Delete($link) }
     $resolvedFixture = [IO.Path]::GetFullPath($fixture)
@@ -166,6 +180,9 @@ try {
     if (Test-Path -LiteralPath $resolvedFixture) {
         $linked = @(Get-ChildItem -LiteralPath $resolvedFixture -Recurse -Force -Attributes ReparsePoint)
         if ($linked.Count -gt 0) { throw 'Unexpected link in test cleanup; fixture retained.' }
-        Remove-Item -LiteralPath $resolvedFixture -Recurse -Force
+        Add-Type -AssemblyName Microsoft.VisualBasic
+        [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($resolvedFixture,
+            [Microsoft.VisualBasic.FileIO.UIOption]::OnlyErrorDialogs,
+            [Microsoft.VisualBasic.FileIO.RecycleOption]::SendToRecycleBin)
     }
 }

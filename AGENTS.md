@@ -2,7 +2,7 @@
 
 Windows deployment kit and shared AI skill for on-demand reading of the operator's own WeChat and QQ data.
 
-- Reuse the pinned upstream WeChatDB library and QCE Framework. Keep this project to installation, lifecycle, diagnostics, storage management and skill instructions; do not add a separate messaging server, collector, model gateway or MCP wrapper.
+- Reuse the pinned upstream WeChatDB library and QCE Framework. This repository is the permission-enforcing access layer for the companion desktop panel and shared skill. Add a small JSON command interface and one shared conversation policy; do not add a messaging server, collector, model gateway or MCP wrapper.
 - Read access is the supported workflow. Do not send messages, automate replies, patch WeChat UI accessibility, or use computer/GUI automation during development and acceptance.
 - Private configuration is `%LOCALAPPDATA%/MessagingAccess/deployment.json`, or the explicitly supplied config path. Resolve installation locations from it; keep machine-specific paths out of public source.
 - Never print credentials, keys, raw private logs or complete runtime configurations. Diagnostics contain versions, counts, times, booleans and exception types. Ordinary user-requested analysis may read the requested message content.

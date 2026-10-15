@@ -1,0 +1,19 @@
+# Permission-enforced access API
+
+`scripts/access.py` is a local JSON command interface, not a network service. Invoke it with the Python executable in the deployment configuration. Write exactly one UTF-8 JSON request to stdin; stdout contains one `{ok,data}` or `{ok:false,error:{code,message}}` object. Internal upstream output is captured, never echoed.
+
+| Action | Input | Purpose |
+|---|---|---|
+| `catalog` | none | Trusted local setup metadata: available accounts and conversations; never send this unrestricted catalog to a model |
+| `policy.get` | none | Current policy or `policy:null` when setup is required |
+| `policy.set` | `accounts` | Human/local administration only: select mode and conversation IDs per account |
+| `conversations` | none | Only conversations allowed by the current policy |
+| `authorize` | `refs` | Check the entire selected set and return the current revision |
+| `messages` | `refs`, `since`, `until` | Read every available page in the fixed Unix-seconds interval |
+| `media` | `ref`, `message_id` | Check conversation permission before resolving the source message; no caller-supplied filesystem paths |
+
+Each conversation has an opaque stable `ref` and separate `platform`, `account`, `conversation_id`, `title`, `kind` metadata. Authorize by platform/account/ID, never title. Message IDs preserve source identity across shards. Pagination completion describes the local/source interface's coverage, not all phone or server history.
+
+The policy is private runtime state, separate from the watched list. An unconfigured account, invalid policy or permission failure cannot fall back to unrestricted access. Changing permissions changes the revision; callers must authorize again before each model request and before displaying retained results. The companion panel does this automatically. Already-submitted provider data cannot be recalled by a local permission change.
+
+Only local setup should call `catalog` or `policy.set`. The skill uses `conversations`, `authorize`, `messages` and `media`; it must not offer a raw-library or direct-QCE fallback. A user-controlled full-permission shell remains outside this product boundary.

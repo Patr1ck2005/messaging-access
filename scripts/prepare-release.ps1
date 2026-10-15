@@ -34,7 +34,7 @@ foreach ($name in $required) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing required public file: $name" }
     Add-PublicFile (Get-Item -LiteralPath $path)
 }
-$types = @{ docs = @('.md'); scripts = @('.ps1'); tests = @('.ps1');
+$types = @{ docs = @('.md'); scripts = @('.ps1', '.py'); tests = @('.ps1', '.py'); src = @('.py');
     skills = @('.md', '.yaml', '.yml', '.py', '.ps1'); '.github' = @('.yaml', '.yml') }
 foreach ($directory in $types.Keys) {
     $base = Join-Path $root $directory

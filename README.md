@@ -1,10 +1,10 @@
-# messaging-access
+# WeChat QQ Access · 微信 QQ 消息读取
 
-[![Validate public source](https://github.com/Patr1ck2005/messaging-access/actions/workflows/validate.yml/badge.svg)](https://github.com/Patr1ck2005/messaging-access/actions/workflows/validate.yml)
+[![Validate public source](https://github.com/Patr1ck2005/wechat-qq-access/actions/workflows/validate.yml/badge.svg)](https://github.com/Patr1ck2005/wechat-qq-access/actions/workflows/validate.yml)
 
 让支持本地工具的 AI 客户端，按需读取你自己的微信与 QQ 消息。
 
-Windows 部署工具与共享 skill，复用 **wechatauto-replica / QCE Framework / NapCat**。支持最新消息读取、可取得历史的分页、消息分析和按需媒体读取。分析模型由你的客户端选择，可搭配 Codex、DeepSeek Harness 等具备文件和命令工具的客户端。
+Windows 部署工具、会话权限与共享 skill，复用 **wechatauto-replica / QCE Framework / NapCat**。支持最新消息读取、可取得历史的分页、消息分析和按需媒体读取。分析模型由你的客户端选择，可搭配 Codex、DeepSeek Harness 等具备文件和命令工具的客户端。
 
 ```mermaid
 flowchart LR
@@ -19,8 +19,8 @@ flowchart LR
 准备 Windows 10/11 x64、PowerShell 7、Python 3.11 x64，以及你已安装的微信／QQ。已实测组合为微信 4.1.15.13、QQ 9.9.33.52230；客户端更新可能改变兼容性。
 
 ```powershell
-git clone https://github.com/Patr1ck2005/messaging-access.git
-Set-Location messaging-access
+git clone https://github.com/Patr1ck2005/wechat-qq-access.git access
+Set-Location access
 ```
 
 从项目目录运行。安装脚本创建隔离 Python 环境、按固定版本下载上游、校验主发布包摘要，并登记同源 skill。登录仍由你手动完成。
@@ -44,6 +44,12 @@ QQ 的 `-AcceptLanMetadataExposure` 有实际含义：固定上游版本的 HTTP
 已有部署的程序、下载包和 token 会复用；安装脚本不启动或强行关闭 QQ，不改模型或 provider 配置。使用自定义 Python 路径时加 `-PythonExe <python.exe路径>`。更多参数以 `Get-Help .\scripts\install.ps1 -Detailed` 为准。
 
 若 Windows 执行策略阻止本地脚本，审阅代码后可用 `pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1`（其他脚本同理）；该选项只作用于该进程，不修改系统执行策略。网络较慢时可显式传 `-PackageIndexUrl <HTTPS镜像地址>`，仅影响本次 pip 请求。
+
+## 会话权限与桌面面板
+
+本版本通过统一 JSON 读取入口强制检查会话权限。首次使用先在 [桌面面板](https://github.com/Patr1ck2005/wechat-qq-ai-panel) 中为每个账号配置白名单或排除名单；缺失、损坏或新账号未配置时，消息读取拒绝执行。关注列表不授予权限。白名单只允许选中会话，排除名单允许未被排除的会话（包括新会话）。详情见 [权限接口](docs/access-api.md)。
+
+既有 `messaging-access` skill 名称、`MESSAGING_ACCESS_CONFIG` 和私有配置位置保持兼容。所有公开调用流程改用 `scripts/access.py`；上游库和 QQ token 本身没有会话级权限，本产品保护其自己的读取与模型外发流程，不构成同一 Windows 用户下的系统沙箱。
 
 ## 开始使用
 

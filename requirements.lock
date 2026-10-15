@@ -22,3 +22,4 @@ uiautomation==2.0.29
 wechatauto-replica==1.2.6.1
 winsdk==1.0.0b10
 zstandard==0.25.0
+Send2Trash==2.1.0

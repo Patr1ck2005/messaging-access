@@ -15,3 +15,7 @@ Upstream assets are downloaded from their original release locations during loca
 Runtime configuration sets local authentication, log levels and disabled management UI; upstream program implementations remain unchanged. Existing desktop WeChat and QQ are installed and licensed separately by their operator.
 
 Python transitive dependencies are installed from package indexes according to `requirements.lock` and retain their own licenses. The lock fixes the tested Windows/Python version set; it is not a claim to license all upstream dependencies under MIT.
+
+## Windows recycling
+
+Send2Trash 2.1.0 (BSD, https://github.com/arsenetar/send2trash) uses the modern Windows IFileOperation recycle-or-fail backend through pywin32 (PSF-style license). Cleanup explicitly imports this backend; unavailable recycling preserves the file rather than using a legacy or permanent-delete fallback.

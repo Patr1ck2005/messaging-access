@@ -9,6 +9,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install Send2Trash==2.1.0 pywin32==312
+      - name: Test conversation permissions and read boundaries
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
       - name: Parse PowerShell files
         shell: pwsh
         run: |

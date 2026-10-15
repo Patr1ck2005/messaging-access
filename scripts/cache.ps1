@@ -143,7 +143,7 @@ $wechat = Join-Path $private 'wechat'
 Add-Files 'WeChatCache' $wechat $dbPattern $false $readerActive
 $fallback = Join-Path $private 'tmp/wechatauto_db'
 Add-Files 'WeChatCache' $fallback $dbPattern $true $readerActive
-$mediaPattern = '(?i)\.(jpg|jpeg|png|gif|webp|bmp|heic|tif|tiff|mp4|mov|mkv|avi|webm|mp3|wav|silk|amr|ogg|m4a|aac|flac|dat)$'
+$mediaPattern = '(?i)(?:\.(jpg|jpeg|png|gif|webp|bmp|heic|tif|tiff|mp4|mov|mkv|avi|webm|mp3|wav|silk|amr|ogg|m4a|aac|flac|dat)$|^[a-f0-9]{64}\.[a-z0-9]{1,10}$)'
 foreach ($dir in @((Join-Path $private 'media'), (Join-Path $wechat 'media'))) {
     Add-Files 'WeChatMedia' $dir $mediaPattern $true $readerActive
 }
@@ -170,7 +170,7 @@ try {
             # Aggregate prompts avoid revealing filenames and keep WhatIf short.
             $approved[$kind] = $candidates.Count -gt 0 -and $PSCmdlet.ShouldProcess(
                 "$kind ($($candidates.Count) files, $([Math]::Round($candidateBytes / 1MB, 3)) MiB)",
-                'Remove recognized cached copies')
+                'Move recognized cached copies to Windows Recycle Bin')
         }
         foreach ($item in $items) {
             if ($item.Category -notin $selected -or -not $item.Eligible) { continue }
@@ -195,14 +195,19 @@ try {
                     $journalWriter = [IO.StreamWriter]::new($journalPath, $true, [Text.UTF8Encoding]::new($false))
                 }
                 Assert-NoLinks $item.Path
-                [IO.File]::Delete($item.Path)
+                $recyclePython = if ($env:WQ_ACCESS_RECYCLE_PYTHON) { $env:WQ_ACCESS_RECYCLE_PYTHON } else { $python }
+                $recycleReply = @{ path = $item.Path } | ConvertTo-Json -Compress |
+                    & $recyclePython (Join-Path $PSScriptRoot 'recycle.py')
+                if ($LASTEXITCODE -ne 0 -or -not ($recycleReply | ConvertFrom-Json).ok) {
+                    throw 'Recycle operation failed; no permanent-delete fallback is permitted.'
+                }
                 $handle.Dispose(); $handle = $null
                 if (-not (Test-Path -LiteralPath $item.Path)) {
                     $removed[$item.Category] += $item.Length
                     $removedCount[$item.Category]++
                     $record = [ordered]@{
                         utc = [DateTime]::UtcNow.ToString('o'); category = $item.Category
-                        path = $item.Path; removedBytes = $item.Length
+                        path = $item.Path; removedBytes = $item.Length; operation = 'recycle'; reclaimedBytes = 0
                     }
                     $journalWriter.WriteLine(($record | ConvertTo-Json -Compress))
                     $journalWriter.Flush()
@@ -226,7 +231,7 @@ $summary = foreach ($kind in $selected) {
         Category = $kind; Files = $files.Count; MiB = [Math]::Round($size / 1MB, 3)
         ReclaimableFiles = $eligible.Count; ReclaimableMiB = [Math]::Round($reclaimable / 1MB, 3)
         RetainedFiles = $files.Count - $eligible.Count; RemovedFiles = $removedCount[$kind]
-        RemovedBytes = $removed[$kind]; FailedOrChangedFiles = $failed[$kind]
+        RemovedBytes = $removed[$kind]; RecycledFiles = $removedCount[$kind]; ReclaimedBytes = 0; FailedOrChangedFiles = $failed[$kind]
     }
 }
 $totalRemoved = [long]0
