@@ -2,6 +2,10 @@
 
 [![Validate public source](https://github.com/Patr1ck2005/wechat-qq-access/actions/workflows/validate.yml/badge.svg)](https://github.com/Patr1ck2005/wechat-qq-access/actions/workflows/validate.yml)
 
+![WeChat QQ Access product overview: existing message data, a code-enforced conversation policy, and shared skill or desktop panel](docs/assets/product-overview.svg)
+
+An on-demand Windows access layer for your own **WeChat + QQ** messages: one conversation policy shared by a local JSON CLI, an AI skill and the [companion desktop panel](https://github.com/Patr1ck2005/wechat-qq-ai-panel).
+
 让支持本地工具的 AI 客户端，按需读取你自己的微信与 QQ 消息。
 
 Windows 部署工具、会话权限与共享 skill，复用 **wechatauto-replica / QCE Framework / NapCat**。支持最新消息读取、可取得历史的分页、消息分析和按需媒体读取。分析模型由你的客户端选择，可搭配 Codex、DeepSeek Harness 等具备文件和命令工具的客户端。
@@ -20,7 +24,7 @@ flowchart LR
 准备 Windows 10/11 x64、PowerShell 7、Python 3.11 x64，以及你已安装的微信／QQ。已实测组合为微信 4.1.15.13、QQ 9.9.33.52230；客户端更新可能改变兼容性。
 
 ```powershell
-git clone https://github.com/Patr1ck2005/wechat-qq-access.git access
+git clone --branch v0.2.2 https://github.com/Patr1ck2005/wechat-qq-access.git access
 Set-Location access
 ```
 
@@ -47,6 +51,12 @@ QQ 的 `-AcceptLanMetadataExposure` 有实际含义：固定上游版本的 HTTP
 若 Windows 执行策略阻止本地脚本，审阅代码后可用 `pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1`（其他脚本同理）；该选项只作用于该进程，不修改系统执行策略。网络较慢时可显式传 `-PackageIndexUrl <HTTPS镜像地址>`，仅影响本次 pip 请求。
 
 ## 会话权限与桌面面板
+
+![Synthetic access CLI and local policy preview: only an allowed QQ conversation is returned, and watching cannot override permission](docs/assets/interface-preview.svg)
+
+**Synthetic demo / 合成数据示意。** The CLI and local-policy illustrations use invented accounts, stable IDs and titles. The response shows selected fields for readability. This is an access-interface example, not a real chat log or a separate GUI shipped by this repository; the optional GUI is in the [panel repository](https://github.com/Patr1ck2005/wechat-qq-ai-panel).
+
+图中账号、会话与数据全部为合成示例；命令行响应只展示部分字段。底座提供读取与权限接口，图形化配置由独立的面板仓库提供。
 
 本版本通过统一 JSON 读取入口强制检查会话权限。首次使用先在 [桌面面板](https://github.com/Patr1ck2005/wechat-qq-ai-panel) 或本地权限 CLI 中为每个账号配置白名单或排除名单；缺失、损坏或新账号未配置时，消息读取拒绝执行。关注列表不授予权限。白名单只允许选中会话，排除名单允许未被排除的会话（包括新会话）。详情见 [权限接口](docs/access-api.md)。
 

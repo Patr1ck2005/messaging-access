@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="800" viewBox="0 0 1400 800" role="img" aria-labelledby="title desc">
+<title id="title">WeChat QQ Access: one permission gate, many AI workflows</title><desc id="desc">Product architecture. Original local message sources are read through a code-enforced conversation policy. Authorized results flow to a shared skill or companion panel. The original databases stay in the trusted local runtime, outside the model input.</desc>
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#111a31" /><stop offset="1" stop-color="#17172f" /></linearGradient><linearGradient id="brand" x2="1" y2="1"><stop stop-color="#498dff" /><stop offset="1" stop-color="#7958ee" /></linearGradient><linearGradient id="bright" x2="1" y2="0"><stop stop-color="#83b6ff" /><stop offset="1" stop-color="#c2b1ff" /></linearGradient><radialGradient id="glow"><stop stop-color="#476cf0" stop-opacity=".26" /><stop offset="1" stop-color="#476cf0" stop-opacity="0" /></radialGradient><linearGradient id="tile" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#508bff" /><stop offset="1" stop-color="#5141cf" /></linearGradient><linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffffff" stop-opacity=".20" /><stop offset="1" stop-color="#ffffff" stop-opacity="0" /></linearGradient></defs>
+<g font-family="Segoe UI,Arial,Helvetica,sans-serif">
+<rect x="0" y="0" width="1400" height="800" rx="24" fill="url(#bg)" />
+<ellipse cx="1250" cy="180" rx="570" ry="400" fill="url(#glow)" />
+<g transform="translate(48 46) scale(0.265625)" data-brand="true">
+<rect x="16" y="16" width="224" height="224" rx="58" fill="url(#tile)" />
+<rect x="17" y="17" width="222" height="222" rx="57" fill="none" stroke="url(#sheen)" stroke-width="2" />
+<path d="M 71 102 H 151 Q 176 102 176 127 V 167 Q 176 191 151 191 H 105 L 69 212 L 75 191 H 71 Q 47 191 47 167 V 127 Q 47 102 71 102 Z" fill="#a7c5ff" />
+<path d="M 89 59 H 177 Q 204 59 204 86 V 139 Q 204 166 177 166 H 171 L 184 188 L 144 166 H 89 Q 63 166 63 139 V 86 Q 63 59 89 59 Z" fill="#ffffff" />
+<circle cx="96" cy="111" r="5.5" fill="#5270d8" /><circle cx="122" cy="111" r="5.5" fill="#5270d8" /><circle cx="148" cy="111" r="5.5" fill="#5270d8" /><polygon points="191,44 197,61 214,67 197,73 191,90 185,73 168,67 185,61" fill="#61e8d5" stroke="#5267e7" stroke-width="3" stroke-linejoin="round" />
+</g>
+<text x="135" y="75" font-size="22" font-weight="600" fill="#9cb2d6">WECHAT QQ</text>
+<text x="135" y="110" font-size="32" font-weight="700" fill="#fff">ACCESS</text>
+<rect x="1109" y="55" width="240" height="34" rx="17" fill="#253c52" />
+<text x="1123" y="78" font-size="14" font-weight="600" fill="#99d9f1">LOCAL ACCESS LAYER</text>
+<text x="48" y="199" font-size="48" font-weight="700" fill="#fff">Your chats. Your access rules.</text>
+<text x="50" y="244" font-size="24" font-weight="400" fill="#a9bbda">One permission gate for your WeChat + QQ AI workflows.</text>
+<rect x="48" y="302" width="348" height="282" rx="18" fill="#1d2a42" stroke="#3d5274" stroke-width="1" />
+<rect x="497" y="302" width="407" height="282" rx="18" fill="#23334e" stroke="#3d5274" stroke-width="1" />
+<rect x="1007" y="302" width="345" height="282" rx="18" fill="#1d2a42" stroke="#3d5274" stroke-width="1" />
+<rect x="68" y="320" width="184" height="34" rx="17" fill="#213254" />
+<text x="82" y="343" font-size="14" font-weight="600" fill="#8fb8ff">01  EXISTING DATA</text>
+<text x="72" y="387" font-size="25" font-weight="600" fill="#f0f5ff">WeChat local store</text>
+<text x="72" y="429" font-size="24" font-weight="600" fill="#f0f5ff">QQ signed-in runtime</text>
+<text x="72" y="490" font-size="20" font-weight="400" fill="#a9bbd8">Reuse the source.</text>
+<text x="72" y="522" font-size="19" font-weight="400" fill="#a9bbd8">Fetch media only on demand.</text>
+<path d="M419 429H470M459 419l12 10l-12 10" fill="none" stroke="#769fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="519" y="320" width="206" height="34" rx="17" fill="#2b484e" />
+<text x="533" y="343" font-size="14" font-weight="600" fill="#9be7df">02  CODE-ENFORCED</text>
+<text x="522" y="387" font-size="27" font-weight="700" fill="#f0f5ff">Conversation policy</text>
+<text x="522" y="429" font-size="19" font-weight="400" fill="#c1d2ee">Platform + account + stable ID</text>
+<text x="522" y="479" font-size="22" font-weight="600" fill="#a5c7ff">Allow-list  /  Exclusion-list</text>
+<text x="522" y="522" font-size="19" font-weight="400" fill="#a9bbd8">Messages · pages · attachments</text>
+<text x="522" y="556" font-size="17" font-weight="400" fill="#85dfca">Missing or invalid policy → refuse</text>
+<path d="M928 429H981M970 419l12 10l-12 10" fill="none" stroke="#769fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<rect x="1028" y="320" width="218" height="34" rx="17" fill="#213254" />
+<text x="1042" y="343" font-size="14" font-weight="600" fill="#8fb8ff">03  AUTHORIZED TEXT</text>
+<text x="1031" y="387" font-size="25" font-weight="600" fill="#f0f5ff">Shared AI skill + CLI</text>
+<text x="1031" y="429" font-size="23" font-weight="600" fill="#f0f5ff">Companion desktop panel</text>
+<text x="1031" y="490" font-size="20" font-weight="400" fill="#a9bbd8">Choose your AI client.</text>
+<text x="1031" y="522" font-size="19" font-weight="400" fill="#a9bbd8">Choose what it can read.</text>
+<circle cx="56" cy="647" r="5" fill="#75dfca" />
+<text x="74" y="653" font-size="17" font-weight="700" fill="#e2ecff">REUSE, NOT DUPLICATE</text>
+<text x="74" y="687" font-size="19" font-weight="400" fill="#9eafce">No second full chat archive</text>
+<circle cx="507" cy="647" r="5" fill="#75dfca" />
+<text x="525" y="653" font-size="17" font-weight="700" fill="#e2ecff">ONE SHARED POLICY</text>
+<text x="525" y="687" font-size="19" font-weight="400" fill="#9eafce">Watching never expands access</text>
+<circle cx="1015" cy="647" r="5" fill="#75dfca" />
+<text x="1033" y="653" font-size="17" font-weight="700" fill="#e2ecff">PREVIEW &amp; RECYCLE</text>
+<text x="1033" y="687" font-size="19" font-weight="400" fill="#9eafce">Keep original stores and keys</text>
+<path d="M48 739H1352" fill="none" stroke="#2b3750" stroke-width="1" />
+<text x="48" y="771" font-size="16" font-weight="400" fill="#8d9bb7">Local product boundary · no new message server or background collector.</text>
+<text x="1078" y="771" font-size="16" font-weight="400" fill="#8d9bb7">WeChat + QQ  /  Windows</text>
+</g></svg>

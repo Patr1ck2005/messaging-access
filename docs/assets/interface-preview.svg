@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="920" viewBox="0 0 1400 920" role="img" aria-labelledby="title desc">
+<title id="title">WeChat QQ Access synthetic CLI and permission preview</title><desc id="desc">A synthetic access-interface example using a valid conversations request and an authorized sample conversation. A local policy card uses invented account and stable IDs; a separate refusal demonstrates that watched status cannot grant permission. No real output or identity is shown.</desc>
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#111a31" /><stop offset="1" stop-color="#17172f" /></linearGradient><linearGradient id="brand" x2="1" y2="1"><stop stop-color="#498dff" /><stop offset="1" stop-color="#7958ee" /></linearGradient><linearGradient id="bright" x2="1" y2="0"><stop stop-color="#83b6ff" /><stop offset="1" stop-color="#c2b1ff" /></linearGradient><radialGradient id="glow"><stop stop-color="#476cf0" stop-opacity=".26" /><stop offset="1" stop-color="#476cf0" stop-opacity="0" /></radialGradient><linearGradient id="tile" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#508bff" /><stop offset="1" stop-color="#5141cf" /></linearGradient><linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ffffff" stop-opacity=".20" /><stop offset="1" stop-color="#ffffff" stop-opacity="0" /></linearGradient></defs>
+<g font-family="Segoe UI,Arial,Helvetica,sans-serif">
+<rect x="0" y="0" width="1400" height="920" rx="24" fill="url(#bg)" />
+<ellipse cx="1250" cy="180" rx="570" ry="400" fill="url(#glow)" />
+<text x="48" y="64" font-size="35" font-weight="700" fill="#fff">See the boundary. Keep the workflow simple.</text>
+<rect x="1079" y="33" width="272" height="34" rx="17" fill="#244142" />
+<text x="1093" y="56" font-size="15" font-weight="600" fill="#8fe4d7">SYNTHETIC DEMO</text>
+<text x="49" y="105" font-size="20" font-weight="400" fill="#a8b8d5">CLI response + local policy illustration · invented account, ID and title</text>
+<rect x="48" y="146" width="796" height="582" rx="18" fill="#121c2d" stroke="#344766" stroke-width="1" />
+<rect x="48" y="146" width="796" height="44" rx="18" fill="#25334a" />
+<circle cx="72" cy="168" r="5" fill="#f47c89" />
+<circle cx="91" cy="168" r="5" fill="#ebc16d" />
+<circle cx="110" cy="168" r="5" fill="#71cab3" />
+<text x="135" y="175" font-size="17" font-weight="400" fill="#a8b9d5">Access JSON command interface</text>
+<text x="727" y="175" font-size="13" font-weight="700" fill="#7d9cc5">LOCAL</text>
+<text x="76" y="231" font-size="14" font-weight="600" fill="#7faaff">REQUEST  ·  stdin</text>
+<text x="76" y="273" font-size="25" font-weight="400" fill="#e6edf9" font-family="Consolas,Menlo,monospace" xml:space="preserve">{"action":"conversations"}</text>
+<path d="M76 307H815" fill="none" stroke="#2d3e58" stroke-width="1" />
+<text x="76" y="344" font-size="14" font-weight="600" fill="#7faaff">RESPONSE  ·  stdout</text>
+<text x="76" y="382" font-size="20" font-weight="400" fill="#b6c5df" font-family="Consolas,Menlo,monospace" xml:space="preserve">{</text>
+<text x="76" y="407" font-size="20" font-weight="400" fill="#9cdecf" font-family="Consolas,Menlo,monospace" xml:space="preserve">  "ok": true,</text>
+<text x="76" y="432" font-size="20" font-weight="400" fill="#b6c5df" font-family="Consolas,Menlo,monospace" xml:space="preserve">  "data": {</text>
+<text x="76" y="457" font-size="20" font-weight="400" fill="#b6c5df" font-family="Consolas,Menlo,monospace" xml:space="preserve">    "conversations": [{</text>
+<text x="76" y="482" font-size="20" font-weight="400" fill="#a7c7ff" font-family="Consolas,Menlo,monospace" xml:space="preserve">      "platform": "qq",</text>
+<text x="76" y="507" font-size="20" font-weight="400" fill="#a7c7ff" font-family="Consolas,Menlo,monospace" xml:space="preserve">      "account": "demo-account",</text>
+<text x="76" y="532" font-size="20" font-weight="400" fill="#a7c7ff" font-family="Consolas,Menlo,monospace" xml:space="preserve">      "conversation_id": "demo-group-01",</text>
+<text x="76" y="557" font-size="20" font-weight="400" fill="#a7c7ff" font-family="Consolas,Menlo,monospace" xml:space="preserve">      "title": "Studio collective",</text>
+<text x="76" y="582" font-size="20" font-weight="400" fill="#a7c7ff" font-family="Consolas,Menlo,monospace" xml:space="preserve">      "kind": "group"</text>
+<text x="76" y="607" font-size="20" font-weight="400" fill="#b6c5df" font-family="Consolas,Menlo,monospace" xml:space="preserve">    }]</text>
+<text x="76" y="632" font-size="20" font-weight="400" fill="#b6c5df" font-family="Consolas,Menlo,monospace" xml:space="preserve">  }</text>
+<text x="76" y="657" font-size="20" font-weight="400" fill="#b6c5df" font-family="Consolas,Menlo,monospace" xml:space="preserve">}</text>
+<text x="76" y="708" font-size="14" font-weight="400" fill="#7e94b4">Selected fields shown · stable opaque ref omitted for readability</text>
+<rect x="874" y="146" width="478" height="323" rx="18" fill="#23334b" stroke="#405779" stroke-width="1" />
+<rect x="895" y="166" width="270" height="34" rx="17" fill="#2b465b" />
+<text x="909" y="189" font-size="14" font-weight="600" fill="#a4dcf0">LOCAL ACCOUNT POLICY</text>
+<text x="899" y="237" font-size="24" font-weight="700" fill="#f2f6ff">QQ · demo-account</text>
+<text x="899" y="277" font-size="18" font-weight="400" fill="#a6bbd8">Mode</text>
+<text x="1028" y="277" font-size="21" font-weight="600" fill="#99c0ff">Allow-list</text>
+<path d="M899 299H1327" fill="none" stroke="#425776" stroke-width="1" />
+<text x="899" y="336" font-size="21" font-weight="600" fill="#e2ecff">demo-group-01</text>
+<text x="899" y="369" font-size="19" font-weight="400" fill="#b5c6e0">Studio collective</text>
+<rect x="901" y="399" width="165" height="34" rx="17" fill="#2a4948" />
+<text x="915" y="422" font-size="14" font-weight="600" fill="#8fe4cd">ALLOWED</text>
+<rect x="1080" y="399" width="243" height="34" rx="17" fill="#2c3d5e" />
+<text x="1094" y="422" font-size="13" font-weight="600" fill="#a6bcf0">WATCHED SEPARATELY</text>
+<rect x="874" y="491" width="478" height="237" rx="18" fill="#312a3d" stroke="#654963" stroke-width="1" />
+<rect x="895" y="512" width="172" height="34" rx="17" fill="#4f3648" />
+<text x="909" y="535" font-size="14" font-weight="600" fill="#f0bdca">DENIED REQUEST</text>
+<text x="899" y="582" font-size="24" font-weight="600" fill="#ffeaf1">Not in the allow-list?</text>
+<text x="899" y="620" font-size="18" font-weight="400" fill="#d9b7c8">No message or attachment is returned.</text>
+<text x="899" y="658" font-size="17" font-weight="400" fill="#cdaabf">Watch status cannot override the policy.</text>
+<text x="899" y="701" font-size="16" font-weight="400" fill="#cdaabf">New account → configure permissions first.</text>
+<text x="50" y="783" font-size="18" font-weight="400" fill="#95abc9">Same checks for</text>
+<text x="50" y="818" font-size="25" font-weight="600" fill="#d8e6ff">Conversation list  /  Message pagination  /  Attachments</text>
+<path d="M48 859H1352" fill="none" stroke="#2b3750" stroke-width="1" />
+<text x="48" y="891" font-size="16" font-weight="400" fill="#8d9bb7">Illustrative synthetic output · authorization is enforced in access code.</text>
+<text x="1078" y="891" font-size="16" font-weight="400" fill="#8d9bb7">WeChat + QQ  /  Windows</text>
+</g></svg>
