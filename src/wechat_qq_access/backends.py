@@ -41,6 +41,37 @@ def decode_id(value: str) -> list:
         raise AccessError("MEDIA_NOT_FOUND", "The attachment message could not be located.") from None
 
 
+def private_path(path: Path, root: Path) -> bool:
+    """Reject escapes and reparse points, while accepting verified Windows file aliases.
+
+    GetFinalPathNameByHandle can report a different namespace alias for an
+    existing file than for its parent directory. Accept that spelling only when
+    the original path is inside root, has no link components, and both parent
+    spellings identify the exact same directory. This never grants another root.
+    """
+    try:
+        root = Path(root).resolve()
+        candidate = Path(os.path.abspath(path))
+        if not candidate.is_relative_to(root):
+            return False
+        current = candidate
+        while True:
+            if _linked(current):
+                return False
+            if current == root:
+                break
+            if current.parent == current:
+                return False
+            current = current.parent
+        resolved = candidate.resolve()
+        if resolved.is_relative_to(root):
+            return True
+        return (candidate.is_file() and resolved.name == candidate.name and
+                resolved.parent.samefile(candidate.parent))
+    except (OSError, ValueError):
+        return False
+
+
 class QuietSink(io.TextIOBase):
     """Discard raw diagnostics rather than retaining private account/key strings."""
     def __init__(self):
@@ -57,10 +88,9 @@ class QuietSink(io.TextIOBase):
 def local_bytes(path: Path, roots: list[Path]) -> tuple[bytes | None, str]:
     """Only known media directories; never expose a raw path or follow a link."""
     try:
-        lexical = Path(path).absolute()
-        resolved = lexical.resolve(strict=True)
-        allowed = next((root.absolute() for root in roots if resolved.is_relative_to(root.resolve())), None)
-        if allowed is None or not resolved.is_file():
+        lexical = Path(os.path.abspath(path))
+        allowed = next((root for root in roots if private_path(lexical, root)), None)
+        if allowed is None or not lexical.is_file():
             return None, "application/octet-stream"
         # Check the lexical components too, as resolve() alone hides junctions.
         current = lexical
@@ -70,14 +100,14 @@ def local_bytes(path: Path, roots: list[Path]) -> tuple[bytes | None, str]:
             if current == current.parent:
                 break
             current = current.parent
-        size = resolved.stat().st_size
+        size = lexical.stat().st_size
         if size > 25 * 1024 * 1024:
             raise AccessError("MEDIA_TOO_LARGE", "The attachment exceeds the inline media limit.")
-        with resolved.open("rb") as stream:
+        with lexical.open("rb") as stream:
             data = stream.read(25 * 1024 * 1024 + 1)
         if len(data) > 25 * 1024 * 1024:
             raise AccessError("MEDIA_TOO_LARGE", "The attachment exceeds the inline media limit.")
-        return data, mimetypes.guess_type(resolved.name)[0] or "application/octet-stream"
+        return data, mimetypes.guess_type(lexical.name)[0] or "application/octet-stream"
     except (OSError, ValueError):
         return None, "application/octet-stream"
 
@@ -94,7 +124,7 @@ def media_output(root: Path, message_id: str):
         # Never use a chat title, attachment filename or source path as an output path.
         filename = hashlib.sha256((message_id + ":" + str(name)).encode()).hexdigest() + suffix
         target = root / filename
-        if _linked(target) or not target.resolve().is_relative_to(root.resolve()):
+        if not private_path(target, root):
             raise AccessError("PRIVATE_PATH_INVALID", "The private media destination is invalid.")
         return str(target)
     return output
@@ -164,7 +194,7 @@ class WeChatBackend:
             db = self.module.WeChatDB(db_dir=str(Path(entry["path"]).parent), account=entry["account"], workdir=str(work))
             if db.account != entry["account"] or db.wxid != account:
                 raise AccessError("ACCOUNT_CHANGED", "The upstream reader selected a different account.")
-            if not all(Path(p).resolve().is_relative_to(self.private) for p in (db.workdir, db.keys_file)):
+            if not all(private_path(Path(p), self.private) for p in (db.workdir, db.keys_file)):
                 raise AccessError("PRIVATE_PATH_INVALID", "The private reader paths are invalid.")
             self.dbs[account] = db
         db = self.dbs[account]
@@ -275,9 +305,10 @@ class WeChatBackend:
             root = self.private / "wechat" / "media"
             media = MediaDownloader(db, save_dir=str(root))
             media._out = media_output(root, message_id)
-            method = {"图片": "download_image", "image": "download_image", "语音": "download_voice",
-                      "voice": "download_voice", "视频": "download_video", "video": "download_video",
-                      "文件": "download_file", "file": "download_file"}.get(row.get("type"))
+            # get_message_row is the raw pinned API: it returns local_type, not
+            # the display `type` field produced by get_messages/_msg_row_to_dict.
+            method = {3: "download_image", 34: "download_voice", 43: "download_video",
+                      49: "download_file"}.get(row.get("local_type"))
             if method is None:
                 return None, "application/octet-stream"
             kwargs = {"shard": parts[2]}

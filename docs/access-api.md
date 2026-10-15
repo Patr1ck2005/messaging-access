@@ -16,4 +16,14 @@ Each conversation has an opaque stable `ref` and separate `platform`, `account`,
 
 The policy is private runtime state, separate from the watched list. An unconfigured account, invalid policy or permission failure cannot fall back to unrestricted access. Changing permissions changes the revision; callers must authorize again before each model request and before displaying retained results. The companion panel does this automatically. Already-submitted provider data cannot be recalled by a local permission change.
 
+## Standalone local setup
+
+The panel is optional. A human can run `catalog` locally, choose the account and stable conversation IDs, then submit this shape to `policy.set`:
+
+```json
+{"action":"policy.set","accounts":[{"platform":"wechat","account":"ACCOUNT_FROM_LOCAL_CATALOG","mode":"allow","conversations":["CONVERSATION_ID_FROM_LOCAL_CATALOG"]}]}
+```
+
+Use `mode:"deny"` for an exclusion list. An empty allow-list permits none; an empty exclusion-list permits all conversations for that configured account, including future ones. Configure each account explicitly. Do not copy real catalog output into issues, public files or an AI context for permission setup.
+
 Only local setup should call `catalog` or `policy.set`. The skill uses `conversations`, `authorize`, `messages` and `media`; it must not offer a raw-library or direct-QCE fallback. A user-controlled full-permission shell remains outside this product boundary.

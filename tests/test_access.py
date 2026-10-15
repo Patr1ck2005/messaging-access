@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import contextlib
+import ast
+import importlib.metadata
 import json
 import os
 import sqlite3
 import subprocess
 import sys
-import tempfile
+import types
+from access_fixtures import RecycleFixture
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -16,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from wechat_qq_access import AccessError, AccessService, Conversation, Page, PolicyStore
-from wechat_qq_access.backends import QQBackend, WeChatBackend, decode_id, local_bytes, media_output, source_id
+from wechat_qq_access.backends import QQBackend, WeChatBackend, decode_id, local_bytes, media_output, private_path, source_id
 from wechat_qq_access.service import safe_response
 
 
@@ -59,7 +62,7 @@ class FakeBackend:
 
 class AccessTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="wechat-qq-access-synthetic-")
+        self.temp = RecycleFixture(prefix="wechat-qq-access-synthetic-")
         self.root = Path(self.temp.name)
         self.policy = PolicyStore(self.root)
         self.backend = FakeBackend()
@@ -280,6 +283,96 @@ class AccessTests(unittest.TestCase):
         self.assertNotEqual(path1, path2)
         self.assertNotIn("secret", path1.name)
         self.assertEqual(path1, Path(first(None, "../../secret.txt")))
+
+    def test_private_file_namespace_alias_requires_same_parent_identity(self):
+        private = self.root / "private"
+        work = private / "wechat"
+        work.mkdir(parents=True)
+        keys = work / "keys.json"
+        keys.write_text("synthetic")
+        alias = self.root / "namespace-alias" / "wechat" / "keys.json"
+        real_resolve, real_samefile = Path.resolve, Path.samefile
+        def resolve(path, *args, **kwargs):
+            return alias if path == keys else real_resolve(path, *args, **kwargs)
+        def samefile(path, other):
+            if path == alias.parent and other == work:
+                return True
+            return real_samefile(path, other)
+        with patch.object(Path, "resolve", resolve), patch.object(Path, "samefile", samefile):
+            self.assertTrue(private_path(keys, private))
+            self.assertEqual(local_bytes(keys, [private])[0], b"synthetic")
+            self.assertFalse(private_path(self.root / "outside.json", private))
+            with patch("wechat_qq_access.backends._linked", side_effect=lambda p: p == keys):
+                self.assertFalse(private_path(keys, private))
+        with patch.object(Path, "resolve", resolve), patch.object(Path, "samefile", return_value=False):
+            self.assertFalse(private_path(keys, private))
+
+    def test_wechat_media_routes_pinned_raw_local_type_and_exact_shard(self):
+        wx = object.__new__(WeChatBackend)
+        wx.private = self.root
+        wx.quiet = contextlib.nullcontext
+        selected = []
+        raw_row = {"local_type": 3, "local_id": 7, "shard": "message__message_0.db", "server_id": 0}
+        class DB:
+            def get_message_row(db, user, local_id, *, shard):
+                self.assertEqual((user, local_id, shard), (self.a.conversation_id, 7, raw_row["shard"]))
+                return raw_row
+        class Media:
+            def __init__(media, db, *, save_dir):
+                pass
+            def download_image(media, user, local_id, *, shard, tier):
+                selected.append(("image", shard, tier))
+                path = Path(media._out(None, "synthetic.jpg"))
+                path.write_bytes(b"synthetic image")
+                return str(path)
+        wx._db = lambda account: DB()
+        module = types.ModuleType("wechatauto.media")
+        module.MediaDownloader = Media
+        parent = types.ModuleType("wechatauto")
+        parent.__path__ = []
+        msg_id = source_id(["wechat", self.a.ref, raw_row["shard"], 7])
+        with patch.dict(sys.modules, {"wechatauto": parent, "wechatauto.media": module}):
+            data, mime = wx.media(self.a, msg_id)
+        self.assertEqual(data, b"synthetic image")
+        self.assertEqual(mime, "image/jpeg")
+        self.assertEqual(selected, [("image", "message__message_0.db", "best")])
+
+    def test_installed_pinned_wechat_source_protocol_matches_adapter(self):
+        # Inspect source and metadata only; importing the package would initialize
+        # its Windows modules. No account database or key values are opened.
+        try:
+            distribution = importlib.metadata.distribution("wechatauto-replica")
+        except importlib.metadata.PackageNotFoundError:
+            self.skipTest("pinned upstream source is not installed in this test interpreter")
+        self.assertEqual(distribution.version, "1.2.6.1")
+        db_tree = ast.parse(Path(distribution.locate_file("wechatauto/db.py")).read_text(encoding="utf-8"))
+        media_tree = ast.parse(Path(distribution.locate_file("wechatauto/media.py")).read_text(encoding="utf-8"))
+        db_class = next(node for node in db_tree.body if isinstance(node, ast.ClassDef) and node.name == "WeChatDB")
+        methods = {node.name: node for node in db_class.body if isinstance(node, ast.FunctionDef)}
+        required = {"_run_msg_query", "_shard_maps", "_shard_label", "_msg_row_to_dict", "_message_dbs", "_db_path"}
+        self.assertTrue(required.issubset(methods))
+        def names(method):
+            return {arg.arg for arg in method.args.args + method.args.kwonlyargs}
+        self.assertTrue({"db_dir", "workdir", "account"}.issubset(names(methods["__init__"])))
+        self.assertTrue({"user", "local_id", "shard"}.issubset(names(methods["get_message_row"])))
+        raw_keys = {key.value for node in ast.walk(methods["get_message_row"]) if isinstance(node, ast.Dict)
+                    for key in node.keys if isinstance(key, ast.Constant) and isinstance(key.value, str)}
+        self.assertTrue({"local_type", "local_id", "shard", "server_id"}.issubset(raw_keys))
+        self.assertNotIn("type", raw_keys)
+        projected = {key.value for node in ast.walk(methods["_msg_row_to_dict"]) if isinstance(node, ast.Dict)
+                     for key in node.keys if isinstance(key, ast.Constant) and isinstance(key.value, str)}
+        self.assertTrue({"local_id", "create_time", "sender_username", "content", "type", "shard"}.issubset(projected))
+        sql = " ".join(node.value for node in ast.walk(methods["_shard_rows"])
+                       if isinstance(node, ast.Constant) and isinstance(node.value, str))
+        for column in ("local_id", "local_type", "real_sender_id", "create_time", "message_content", "source",
+                       "packed_info_data", "compress_content", "server_id", "sort_seq"):
+            self.assertIn(column, sql)
+        media_class = next(node for node in media_tree.body if isinstance(node, ast.ClassDef) and node.name == "MediaDownloader")
+        media_methods = {node.name: node for node in media_class.body if isinstance(node, ast.FunctionDef)}
+        for method in ("download_image", "download_voice", "download_video", "download_file"):
+            self.assertTrue({"user", "local_id", "shard"}.issubset(names(media_methods[method])))
+        self.assertIn("tier", names(media_methods["download_image"]))
+        self.assertTrue({"save_dir", "name"}.issubset(names(media_methods["_out"])))
 
     def test_qq_normalizes_self_text_and_attachments_without_raw_elements(self):
         row = {"msgId": "m", "msgTime": "12", "senderUid": "self", "elements": [

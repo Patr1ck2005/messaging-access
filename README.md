@@ -47,7 +47,7 @@ QQ 的 `-AcceptLanMetadataExposure` 有实际含义：固定上游版本的 HTTP
 
 ## 会话权限与桌面面板
 
-本版本通过统一 JSON 读取入口强制检查会话权限。首次使用先在 [桌面面板](https://github.com/Patr1ck2005/wechat-qq-ai-panel) 中为每个账号配置白名单或排除名单；缺失、损坏或新账号未配置时，消息读取拒绝执行。关注列表不授予权限。白名单只允许选中会话，排除名单允许未被排除的会话（包括新会话）。详情见 [权限接口](docs/access-api.md)。
+本版本通过统一 JSON 读取入口强制检查会话权限。首次使用先在 [桌面面板](https://github.com/Patr1ck2005/wechat-qq-ai-panel) 或本地权限 CLI 中为每个账号配置白名单或排除名单；缺失、损坏或新账号未配置时，消息读取拒绝执行。关注列表不授予权限。白名单只允许选中会话，排除名单允许未被排除的会话（包括新会话）。详情见 [权限接口](docs/access-api.md)。
 
 既有 `messaging-access` skill 名称、`MESSAGING_ACCESS_CONFIG` 和私有配置位置保持兼容。所有公开调用流程改用 `scripts/access.py`；上游库和 QQ token 本身没有会话级权限，本产品保护其自己的读取与模型外发流程，不构成同一 Windows 用户下的系统沙箱。
 
