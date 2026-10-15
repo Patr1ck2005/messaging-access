@@ -24,7 +24,7 @@ flowchart LR
 准备 Windows 10/11 x64、PowerShell 7、Python 3.11 x64，以及你已安装的微信／QQ。已实测组合为微信 4.1.15.13、QQ 9.9.33.52230；客户端更新可能改变兼容性。
 
 ```powershell
-git clone --branch v0.2.2 https://github.com/Patr1ck2005/wechat-qq-access.git access
+git clone --branch v0.2.3 https://github.com/Patr1ck2005/wechat-qq-access.git access
 Set-Location access
 ```
 
@@ -57,6 +57,10 @@ QQ 的 `-AcceptLanMetadataExposure` 有实际含义：固定上游版本的 HTTP
 **Synthetic demo / 合成数据示意。** The CLI and local-policy illustrations use invented accounts, stable IDs and titles. The response shows selected fields for readability. This is an access-interface example, not a real chat log or a separate GUI shipped by this repository; the optional GUI is in the [panel repository](https://github.com/Patr1ck2005/wechat-qq-ai-panel).
 
 图中账号、会话与数据全部为合成示例；命令行响应只展示部分字段。底座提供读取与权限接口，图形化配置由独立的面板仓库提供。
+
+Conversation metadata includes source activity time when available. The companion panel sorts recent conversations first within each platform/account/type section, keeping unknown times last with stable ties. It uses a compact, high-contrast neutral layout with a 600 px default width.
+
+有来源活动时间的会话会提供相应元数据，供面板在平台／账号／类型分区内部按最近活跃排序；未知时间稳定后置。面板默认宽 600 px，使用紧凑、高对比的中性灰阶界面。
 
 本版本通过统一 JSON 读取入口强制检查会话权限。首次使用先在 [桌面面板](https://github.com/Patr1ck2005/wechat-qq-ai-panel) 或本地权限 CLI 中为每个账号配置白名单或排除名单；缺失、损坏或新账号未配置时，消息读取拒绝执行。关注列表不授予权限。白名单只允许选中会话，排除名单允许未被排除的会话（包括新会话）。详情见 [权限接口](docs/access-api.md)。
 

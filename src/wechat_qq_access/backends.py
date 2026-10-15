@@ -13,16 +13,47 @@ import importlib.metadata
 import io
 import json
 import logging
+import math
 import mimetypes
 import os
 import re
 import tempfile
+from dataclasses import replace
+from datetime import datetime
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 from .service import AccessError, Conversation, Page, _linked
+
+
+def last_active_seconds(value) -> float | None:
+    """Normalize source metadata only: epoch seconds/milliseconds or zoned ISO 8601.
+
+    QCE v6.3.2 recent contacts expose ``lastMsgTime`` as UTC ISO text; WeChat's
+    pinned session table exposes numeric ``last_timestamp``. Missing/invalid
+    values stay unknown rather than using contact order, names or wall time.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
+        return None
+    try:
+        stamp = float(value)
+    except (ValueError, OverflowError):
+        if not isinstance(value, str):
+            return None
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if parsed.tzinfo is None or parsed.utcoffset() is None:
+                return None
+            stamp = parsed.timestamp()
+        except (ValueError, TypeError, OverflowError, OSError):
+            return None
+    if not math.isfinite(stamp) or stamp < 0:
+        return None
+    if stamp >= 10000000000:
+        stamp /= 1000
+    return stamp if stamp <= 9999999999 else None
 
 
 def source_id(parts: list) -> str:
@@ -216,16 +247,44 @@ class WeChatBackend:
                     db = self._db(account)
                     rows = db.list_message_chats()
                     self._db(account)  # The upstream may switch accounts while resolving keys.
+                    try:
+                        active = self._activity(db)
+                    except Exception:
+                        active = {}
+                        warnings.append("WECHAT_ACTIVITY_UNAVAILABLE")
+                    self._db(account)
                     for row in rows:
                         cid = str(row["username"])
                         conversations.append(Conversation("wechat", account, cid, str(row.get("name") or cid),
-                                                          "group" if cid.endswith("@chatroom") else "private"))
+                                                          "group" if cid.endswith("@chatroom") else "private",
+                                                          active.get(cid)))
                     if self.sink.warning_count != before:
                         warnings.append("WECHAT_METADATA_WARNING")
                 except Exception:
                     warnings.append("WECHAT_ACCOUNT_UNAVAILABLE")
         warnings.append("WECHAT_SCOPE_LOCAL_ORDINARY_MESSAGE_DATABASES")
         return accounts, conversations, sorted(set(warnings))
+
+    @staticmethod
+    def _activity(db):
+        # The pinned get_sessions() also selects message summaries. Read only
+        # the stable ID and timestamp columns from its same session directory.
+        for rel, path, _ in db._db_files:
+            if os.path.basename(path) != "session.db":
+                continue
+            connection = db._open(rel)
+            try:
+                rows = connection.execute("SELECT username, last_timestamp FROM SessionTable")
+                active = {}
+                for row in rows:
+                    stamp = last_active_seconds(row["last_timestamp"])
+                    cid = str(row["username"])
+                    if stamp is not None:
+                        active[cid] = max(active.get(cid, stamp), stamp)
+                return active
+            finally:
+                connection.close()
+        return {}
 
     def _fingerprint(self, db):
         result = []
@@ -410,9 +469,16 @@ class QQBackend:
             if uid is None or isinstance(chat_type, bool) or not str(chat_type).isdigit():
                 continue
             cid = str(int(chat_type)) + ":" + str(uid)
-            conversations.setdefault(cid, Conversation("qq", account, cid,
-                str(row.get("name") or row.get("peerName") or row.get("nick") or cid),
-                "group" if int(chat_type) == 2 else "private" if int(chat_type) == 1 else "device"))
+            stamp = last_active_seconds(row.get("lastMsgTime"))
+            existing = conversations.get(cid)
+            if existing is None:
+                conversations[cid] = Conversation("qq", account, cid,
+                    str(row.get("name") or row.get("peerName") or row.get("nick") or cid),
+                    "group" if int(chat_type) == 2 else "private" if int(chat_type) == 1 else "device", stamp)
+            elif stamp is not None and (existing.last_active is None or stamp > existing.last_active):
+                # Keep the canonical address-book title/kind and enrich its
+                # metadata instead of setdefault silently dropping recent time.
+                conversations[cid] = replace(existing, last_active=stamp)
         self.verify(account)
         warnings = ["QQ_SCOPE_AVAILABLE_LOCAL_CONTACTS_AND_HISTORY"]
         if int(recent.get("totalCount", len(rows))) > len(rows):

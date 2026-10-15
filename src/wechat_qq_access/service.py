@@ -38,14 +38,21 @@ class Conversation:
     conversation_id: str
     title: str
     kind: str = "private"
+    last_active: float | None = None
 
     @property
     def ref(self) -> str:
         return opaque_ref(self.platform, self.account, self.conversation_id)
 
     def public(self) -> dict:
+        # Metadata is optional and must remain safe for strict JSON consumers.
+        stamp = self.last_active
+        if (isinstance(stamp, bool) or not isinstance(stamp, (int, float)) or
+            not 0 <= stamp <= 9999999999 or not math.isfinite(stamp)):
+            stamp = None
         return {"ref": self.ref, "platform": self.platform, "account": self.account,
-                "conversation_id": self.conversation_id, "title": self.title, "kind": self.kind}
+                "conversation_id": self.conversation_id, "title": self.title, "kind": self.kind,
+                "last_active": stamp}
 
 
 @dataclass

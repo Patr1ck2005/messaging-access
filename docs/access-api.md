@@ -14,7 +14,9 @@ Configuration follows [deployment discovery](deployment.md). An optional command
 | `messages` | `refs`, `since`, `until` | Read every available page in the fixed Unix-seconds interval |
 | `media` | `ref`, `message_id` | Check conversation permission before resolving the source message; no caller-supplied filesystem paths |
 
-Each conversation has an opaque stable `ref` and separate `platform`, `account`, `conversation_id`, `title`, `kind` metadata. Authorize by platform/account/ID, never title. Message IDs preserve source identity across shards. Pagination completion describes the local/source interface's coverage, not all phone or server history.
+Each conversation has an opaque stable `ref` and separate `platform`, `account`, `conversation_id`, `title`, `kind`, `last_active` metadata. `last_active` is a finite nonnegative Unix-seconds number or `null` when unknown. It is the last-message time available in source metadata, not an activity score or the catalog refresh time: WeChat uses `SessionTable.last_timestamp`, and QCE v6.3.2 recent contacts use the zoned ISO `lastMsgTime` field. Epoch milliseconds are normalized to seconds. Contacts absent from recent/session metadata retain `null`; callers can put these last and preserve source order for ties. No message-body scan is added for sorting. Both `catalog` and permission-filtered `conversations` expose the same projection.
+
+Authorize by platform/account/ID, never title or timestamp. Message IDs preserve source identity across shards. Pagination completion describes the local/source interface's coverage, not all phone or server history.
 
 The policy is private runtime state, separate from the watched list. An unconfigured account, invalid policy or permission failure cannot fall back to unrestricted access. Changing permissions changes the revision; callers must authorize again before each model request and before displaying retained results. The companion panel does this automatically. Already-submitted provider data cannot be recalled by a local permission change.
 
