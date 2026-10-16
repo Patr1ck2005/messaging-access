@@ -2,15 +2,21 @@
 from __future__ import annotations
 
 import base64
+from contextlib import contextmanager
 import hashlib
 import json
 import math
 import os
 import stat
+import threading
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+
+_POLICY_LOCKS: dict[str, threading.RLock] = {}
+_POLICY_LOCKS_GUARD = threading.Lock()
 
 
 class AccessError(Exception):
@@ -77,6 +83,67 @@ class PolicyStore:
     def __init__(self, private_root: Path):
         self.root = Path(private_root).absolute()
         self.path = self.root / "access-policy.json"
+        self.lock_path = self.root / ".access-policy.lock"
+
+    @contextmanager
+    def locked(self):
+        """Serialize all writers across threads and processes on one persistent inode.
+
+        Never truncate, unlink or replace the lock file. Refuse linked/replaced
+        lock paths so a second writer cannot silently acquire a different lock.
+        """
+        key = os.path.normcase(str(self.lock_path))
+        with _POLICY_LOCKS_GUARD:
+            thread_lock = _POLICY_LOCKS.setdefault(key, threading.RLock())
+        with thread_lock:
+            fd, acquired = None, False
+            try:
+                if _linked(self.root) or _linked(self.path) or _linked(self.lock_path):
+                    raise AccessError("POLICY_INVALID", "The conversation policy is unavailable or invalid.")
+                self.root.mkdir(parents=True, exist_ok=True)
+                flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NOINHERIT", 0)
+                fd = os.open(self.lock_path, flags, 0o600)
+                opened = os.fstat(fd)
+                if not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1:
+                    raise AccessError("POLICY_INVALID", "The conversation policy is unavailable or invalid.")
+                if os.name == "nt":
+                    import msvcrt
+                    os.lseek(fd, 0, os.SEEK_SET)
+                    msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(fd, fcntl.LOCK_EX)
+                acquired = True
+                if (_linked(self.root) or _linked(self.path) or _linked(self.lock_path) or
+                        os.fstat(fd).st_nlink != 1 or
+                        not os.path.samestat(os.fstat(fd), self.lock_path.stat())):
+                    raise AccessError("POLICY_INVALID", "The conversation policy is unavailable or invalid.")
+                if os.fstat(fd).st_size == 0:
+                    os.write(fd, b"\0")
+                    os.fsync(fd)
+            except OSError:
+                if fd is not None:
+                    os.close(fd)
+                    fd = None
+                raise AccessError("POLICY_WRITE_FAILED", "The conversation policy could not be saved.") from None
+            except AccessError:
+                if fd is not None:
+                    os.close(fd)
+                    fd = None
+                raise
+            try:
+                yield fd
+            finally:
+                if fd is not None:
+                    try:
+                        if acquired:
+                            if os.name == "nt":
+                                os.lseek(fd, 0, os.SEEK_SET)
+                                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+                            else:
+                                fcntl.flock(fd, fcntl.LOCK_UN)
+                    finally:
+                        os.close(fd)
 
     @staticmethod
     def validate_accounts(accounts: Any) -> list[dict]:
@@ -107,7 +174,7 @@ class PolicyStore:
         except FileNotFoundError:
             if not required:
                 return None, ""
-            raise AccessError("POLICY_REQUIRED", "Choose conversation permissions in the local settings first.") from None
+            raise AccessError("POLICY_REQUIRED", "Authorize the requested conversations before reading messages.") from None
         except OSError:
             raise AccessError("POLICY_INVALID", "The conversation policy is unavailable or invalid.") from None
         try:
@@ -122,7 +189,14 @@ class PolicyStore:
 
     def write(self, accounts: Any) -> dict:
         accounts = self.validate_accounts(accounts)
-        if _linked(self.root) or _linked(self.path):
+        with self.locked() as lock_fd:
+            return self._write_locked(accounts, lock_fd)
+
+    def _write_locked(self, accounts: list[dict], lock_fd: int) -> dict:
+        """Caller holds locked() for the complete read/modify/write operation."""
+        if (_linked(self.root) or _linked(self.path) or _linked(self.lock_path) or
+                os.fstat(lock_fd).st_nlink != 1 or
+                not os.path.samestat(os.fstat(lock_fd), self.lock_path.stat())):
             raise AccessError("POLICY_INVALID", "The conversation policy is unavailable or invalid.")
         self.root.mkdir(parents=True, exist_ok=True)
         policy = {"schemaVersion": 1, "revision": uuid.uuid4().hex, "accounts": accounts}
@@ -174,16 +248,101 @@ class AccessService:
             raise AccessError("ACCESS_DENIED", "One or more conversations are unavailable or not authorized.")
         return [by_ref[ref] for ref in requested]
 
+    def _find(self, request: dict) -> dict:
+        query = text_id(request["query"]).strip().casefold()
+        if not query:
+            raise AccessError("INVALID_REQUEST", "A nonempty conversation search is required.")
+        if "platform" in request and request["platform"] not in ("wechat", "qq"):
+            raise AccessError("INVALID_REQUEST", "Choose a supported messaging platform.")
+        for field in ("account", "kind"):
+            if field in request:
+                text_id(request[field])
+        limit = request.get("limit", 20)
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 100:
+            raise AccessError("INVALID_REQUEST", "The search limit must be between 1 and 100.")
+        policy, digest = self.policy.read(required=False)
+        _, convs, warnings = self.catalog()
+        matches = []
+        for conv in convs:
+            if any(field in request and request[field] != getattr(conv, field)
+                   for field in ("platform", "account", "kind")):
+                continue
+            values = (conv.title.casefold(), conv.conversation_id.casefold())
+            if not any(query in value for value in values):
+                continue
+            exact = query in values
+            matches.append({**conv.public(), "authorized": bool(policy and self.policy.permits(policy, conv)),
+                            "match": "exact" if exact else "partial"})
+        matches.sort(key=lambda row: (row["match"] != "exact", -(row["last_active"] or 0),
+                                      row["platform"], row["account"], row["conversation_id"]))
+        # Search metadata and authorization flags must describe the same snapshot.
+        if self.policy.read(required=False)[1] != digest:
+            raise AccessError("POLICY_CHANGED", "Permissions changed during the request; retry the conversation search.")
+        return {"conversations": matches[:limit], "total": len(matches), "truncated": len(matches) > limit,
+                "policy_revision": policy["revision"] if policy else None, "warnings": warnings}
+
+    def _patch_policy(self, request: dict, grant: bool) -> dict:
+        refs = request["refs"]
+        if not isinstance(refs, list) or not refs or len(refs) > 100000:
+            raise AccessError("INVALID_REQUEST", "Explicit nonempty conversation references are required.")
+        requested = list(dict.fromkeys(text_id(ref) for ref in refs))
+        expected = request["expected_revision"]
+        if expected is not None:
+            text_id(expected)
+        with self.policy.locked() as lock_fd:
+            policy, _ = self.policy.read(required=False)
+            revision = policy["revision"] if policy else None
+            if revision != expected:
+                raise AccessError("POLICY_CHANGED", "Permissions changed; review current candidates before retrying.")
+            _, catalog, _ = self.catalog()
+            by_ref = {conv.ref: conv for conv in catalog}
+            if any(ref not in by_ref for ref in requested):
+                raise AccessError("ACCESS_DENIED", "One or more conversations are unavailable or not authorized.")
+            convs = [by_ref[ref] for ref in requested]
+            accounts = [{**row, "conversations": list(row["conversations"])}
+                        for row in (policy["accounts"] if policy else [])]
+            by_account = {(row["platform"], row["account"]): row for row in accounts}
+            changed = False
+            for conv in convs:
+                key = conv.platform, conv.account
+                row = by_account.get(key)
+                if row is None:
+                    if not grant:
+                        continue  # Unconfigured accounts already deny every conversation.
+                    row = {"platform": conv.platform, "account": conv.account,
+                           "mode": "allow", "conversations": []}
+                    accounts.append(row)
+                    by_account[key] = row
+                listed = conv.conversation_id in row["conversations"]
+                should_list = grant == (row["mode"] == "allow")
+                if listed != should_list:
+                    changed = True
+                    if should_list:
+                        row["conversations"].append(conv.conversation_id)
+                    else:
+                        row["conversations"].remove(conv.conversation_id)
+            if changed:
+                policy = self.policy._write_locked(self.policy.validate_accounts(accounts), lock_fd)
+            return {"changed": changed, "policy_revision": policy["revision"] if policy else None,
+                    "conversations": [{**conv.public(),
+                                       "authorized": bool(policy and self.policy.permits(policy, conv))}
+                                      for conv in convs]}
+
     @staticmethod
     def _request(request: Any) -> str:
         allowed = {"catalog": {"action"}, "policy.get": {"action"},
                    "policy.set": {"action", "accounts"}, "conversations": {"action"},
+                   "policy.grant": {"action", "refs", "expected_revision"},
+                   "policy.revoke": {"action", "refs", "expected_revision"},
+                   "conversations.find": {"action", "query"},
                    "authorize": {"action", "refs"}, "messages": {"action", "refs", "since", "until"},
                    "media": {"action", "ref", "message_id"}}
         if not isinstance(request, dict) or request.get("action") not in allowed:
             raise AccessError("INVALID_REQUEST", "Unknown access action.")
         action = request["action"]
-        if set(request) != allowed[action]:
+        optional = ({"platform", "account", "kind", "limit"} if action == "conversations.find" else
+                    {"expected_revision"} if action == "policy.set" else set())
+        if not allowed[action] <= set(request) or set(request) - allowed[action] - optional:
             raise AccessError("INVALID_REQUEST", "The request has missing or unsupported fields.")
         return action
 
@@ -194,21 +353,33 @@ class AccessService:
         if action == "catalog":
             accounts, convs, warnings = self.catalog()
             return {"accounts": accounts, "conversations": [c.public() for c in convs], "warnings": warnings}
+        if action == "conversations.find":
+            return self._find(request)
+        if action in ("policy.grant", "policy.revoke"):
+            return self._patch_policy(request, action == "policy.grant")
         if action == "policy.set":
             accounts = self.policy.validate_accounts(request["accounts"])
+            compare_revision = "expected_revision" in request
+            if compare_revision and request["expected_revision"] is not None:
+                text_id(request["expected_revision"])
             known_accounts, _, _ = self.catalog()
             known = {(a["platform"], a["account"]) for a in known_accounts}
-            try:
-                existing, _ = self.policy.read(required=False)
-            except AccessError:
-                # Explicit local settings can replace a corrupt policy using currently
-                # discovered accounts. Ordinary reads still fail closed.
-                existing = None
-            if existing:
-                known.update((a["platform"], a["account"]) for a in existing["accounts"])
-            if any((a["platform"], a["account"]) not in known for a in accounts):
-                raise AccessError("ACCOUNT_UNKNOWN", "Configure only locally discovered accounts.")
-            return {"policy": self.policy.write(accounts)}
+            with self.policy.locked() as lock_fd:
+                try:
+                    existing, _ = self.policy.read(required=False)
+                except AccessError:
+                    # Explicit settings replacement remains a separate recovery action.
+                    # Incremental grant/revoke always reject a corrupt policy.
+                    if compare_revision:
+                        raise
+                    existing = None
+                if compare_revision and (existing["revision"] if existing else None) != request["expected_revision"]:
+                    raise AccessError("POLICY_CHANGED", "Permissions changed; review current settings before saving.")
+                if existing:
+                    known.update((a["platform"], a["account"]) for a in existing["accounts"])
+                if any((a["platform"], a["account"]) not in known for a in accounts):
+                    raise AccessError("ACCOUNT_UNKNOWN", "Configure only locally discovered accounts.")
+                return {"policy": self.policy._write_locked(accounts, lock_fd)}
         policy, digest = self.policy.read()
         if action == "conversations":
             _, convs, warnings = self.catalog()

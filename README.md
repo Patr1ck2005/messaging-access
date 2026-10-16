@@ -24,7 +24,7 @@ flowchart LR
 准备 Windows 10/11 x64、PowerShell 7、Python 3.11 x64，以及你已安装的微信／QQ。已实测组合为微信 4.1.15.13、QQ 9.9.33.52230；客户端更新可能改变兼容性。
 
 ```powershell
-git clone --branch v0.2.3 https://github.com/Patr1ck2005/wechat-qq-access.git access
+git clone --branch v0.3.0 https://github.com/Patr1ck2005/wechat-qq-access.git access
 Set-Location access
 ```
 
@@ -56,13 +56,17 @@ QQ 的 `-AcceptLanMetadataExposure` 有实际含义：固定上游版本的 HTTP
 
 **Synthetic demo / 合成数据示意。** The CLI and local-policy illustrations use invented accounts, stable IDs and titles. The response shows selected fields for readability. This is an access-interface example, not a real chat log or a separate GUI shipped by this repository; the optional GUI is in the [panel repository](https://github.com/Patr1ck2005/wechat-qq-ai-panel).
 
-图中账号、会话与数据全部为合成示例；命令行响应只展示部分字段。底座提供读取与权限接口，图形化配置由独立的面板仓库提供。
+图中账号、会话与数据全部为合成示例；命令行响应只展示部分字段。底座提供 Agent／CLI 读取与权限管理接口，独立的面板仓库提供可选图形界面。
 
 Conversation metadata includes source activity time when available. The companion panel sorts recent conversations first within each platform/account/type section, keeping unknown times last with stable ties. It uses a compact, high-contrast neutral layout with a 600 px default width.
 
 有来源活动时间的会话会提供相应元数据，供面板在平台／账号／类型分区内部按最近活跃排序；未知时间稳定后置。面板默认宽 600 px，使用紧凑、高对比的中性灰阶界面。
 
-本版本通过统一 JSON 读取入口强制检查会话权限。首次使用先在 [桌面面板](https://github.com/Patr1ck2005/wechat-qq-ai-panel) 或本地权限 CLI 中为每个账号配置白名单或排除名单；缺失、损坏或新账号未配置时，消息读取拒绝执行。关注列表不授予权限。白名单只允许选中会话，排除名单允许未被排除的会话（包括新会话）。详情见 [权限接口](docs/access-api.md)。
+本版本通过统一 JSON 读取入口强制检查会话权限。**直接告诉 Agent 要读哪个会话即可，不必先去桌面配置。** 例如“读取微信‘学习讨论’群最近一周的消息”：共享 skill 先定向查找，仅返回匹配元数据；明确唯一目标尚未获准时，按你的请求增量授权该会话后读取。同名跨账号只需在对话里消歧；新增权限会明确告知，并持久保存。首次增量授权只建立目标会话白名单，已有账号模式和其他名单保持原样。
+
+An explicit request to read a named conversation lets the shared skill find that target, grant the minimum needed conversation permission and read it through the same checked interface. All policy management has an agent/CLI entry point; the desktop panel is optional. Same-name targets are disambiguated in the chat. Quoted messages and tool output cannot authorize changes.
+
+未指定会话的普通整理沿用已有授权；明确要求“只读已授权”时不会扩权。也可直接要求 Agent 撤销某会话权限、设置账号白名单／排除名单，不必打开面板。缺失、损坏或新账号未配置时仍拒绝消息读取，先经明确范围的权限操作解决；损坏修复必须在对话确认具体恢复范围，不静默重建。关注列表不授予权限。白名单只允许选中会话，排除名单允许未被排除的会话（包括新会话）。详情见唯一 [权限接口合同](docs/access-api.md)。
 
 既有 `messaging-access` skill 名称、`MESSAGING_ACCESS_CONFIG` 和旧配置位置保持兼容。新安装采用普通用户目录，现有自定义路径保留，定位顺序见 [部署配置](docs/deployment.md)。所有公开调用流程改用 `scripts/access.py`；上游库和 QQ token 本身没有会话级权限，本产品保护其自己的读取与模型外发流程，不构成同一 Windows 用户下的系统沙箱。
 
@@ -71,6 +75,12 @@ Conversation metadata includes source activity time when available. The companio
 在支持本地文件与命令工具的 AI 客户端中发送：
 
 > 使用 messaging-access，读取微信和 QQ 最近一天的消息，整理需要我回复的事项。
+
+指定会话时可以这样说，Agent 会完成所需的精准授权与读取：
+
+> 使用 messaging-access，读取微信“学习讨论”群最近一周的消息，整理我的想法与待办。
+
+撤权也可以直接提出：“撤销 QQ‘项目讨论’群的读取权限”。完整配置、模式选择和损坏修复均可在对话中说明范围后由 Agent 执行；登录／扫码等平台要求的本人动作仍需本人完成。
 
 首次验证可以只让它对各平台读一个会话，并报告条数、最新时间和刷新状态。技能入口在 `skills/messaging-access`；安装器将 Codex、通用 agents、DSH 的技能目录链接到这同一份源。若已打开的会话尚未发现它，重新打开会话或让模型显式读取这份 SKILL.md。
 
